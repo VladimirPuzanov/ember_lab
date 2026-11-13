@@ -1,0 +1,513 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="theme-color" content="#0d0e12" />
+  <title>EMBER / LAB — физика тления сигареты</title>
+  <style>
+    :root{
+      --bg:#0b0d11;--surface:#13161b;--panel:#171b22;--line:#30343d;
+      --text:#e7e7e5;--muted:#858b99;--muted2:#606773;--hot:#fe904b;--hot2:#fa633f;
+      --cool:#93a6ba;--ok:#73bf9c;--red:#f07877;--radius:17px;
+    }
+    *{box-sizing:border-box}
+    html,body{margin:0;min-height:100%;background:var(--bg);color:var(--text)}
+    body{font-family:Inter,ui-sans-serif,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;letter-spacing:-.01em}
+    button,input{font:inherit}
+    button{cursor:pointer;transition:background .15s ease,transform .15s ease,border-color .15s ease}
+    button:active:not(:disabled){transform:scale(.975)}button:disabled{opacity:.38;cursor:not-allowed}
+    button:focus-visible,input:focus-visible,summary:focus-visible{outline:2px solid #f99a65;outline-offset:3px}
+    a{color:#fac08d;text-decoration:none}a:hover{text-decoration:underline}
+    .shell{max-width:1510px;margin:auto;padding:28px 34px 50px}
+    .nav{display:flex;justify-content:space-between;gap:24px;align-items:center;padding-bottom:27px;border-bottom:1px solid #292c32}
+    .brand{display:flex;gap:14px;align-items:center}
+    .mark{width:38px;height:38px;display:grid;place-items:center;border:1px solid #704536;border-radius:11px;background:#2b1c18;color:#fd9f69;font-size:22px;box-shadow:0 0 30px #ff6b2612}
+    .brand-name{font-size:15px;letter-spacing:.18em;font-weight:850}
+    .brand-sub{margin-top:3px;font-family:ui-monospace,Consolas,monospace;font-size:9px;letter-spacing:.14em;color:var(--muted)}
+    .nav-right{display:flex;align-items:center;gap:19px;color:#858b95;font:11px ui-monospace,Consolas,monospace}
+    .live-dot{display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--ok);box-shadow:0 0 12px #65d3a655;margin-right:7px}
+    .hero{display:flex;justify-content:space-between;align-items:flex-end;gap:16px;padding:36px 0 27px}
+    .eyebrow{font:600 10px ui-monospace,Consolas,monospace;letter-spacing:.18em;color:var(--hot);text-transform:uppercase}
+    h1{font-size:clamp(32px,3.7vw,58px);letter-spacing:-.055em;font-weight:700;line-height:1.06;margin:12px 0}
+    .description{max-width:710px;margin:0;font-size:13px;color:#9096a1;line-height:1.8}
+    .hero-meta{text-align:right;flex-shrink:0;font:11px ui-monospace,Consolas,monospace;color:#8b909b;line-height:2}
+    .hero-meta strong{color:#d3d7dc;font-weight:500}
+    .metrics{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin-bottom:14px}
+    .metric{background:linear-gradient(145deg,#191b20,#15171d);border:1px solid #2b2e35;border-radius:14px;padding:18px 19px 16px;min-width:0;position:relative;overflow:hidden}
+    .metric:after{content:"";position:absolute;inset:auto 0 0 0;height:2px;background:linear-gradient(90deg,transparent,#eb814720,transparent)}
+    .metric-top{display:flex;justify-content:space-between;gap:8px;align-items:center;font:10px ui-monospace,Consolas,monospace;letter-spacing:.07em;color:var(--muted);text-transform:uppercase}
+    .metric-value{font-variant-numeric:tabular-nums;white-space:nowrap;font-size:clamp(25px,3vw,38px);letter-spacing:-.055em;font-weight:650;line-height:1.28;margin:9px 0 3px}
+    .metric-value em{font-style:normal;font-size:.4em;color:#9298a3;font-weight:500;letter-spacing:0;margin-left:3px}
+    .metric-bottom{font:11px ui-monospace,Consolas,monospace;color:#777e8c}
+    .color-hot{color:#ffad74}
+    .main-grid{display:grid;grid-template-columns:minmax(0,1.85fr) minmax(326px,.89fr);gap:14px;align-items:start}
+    .panel{background:var(--surface);border:1px solid #2a2e36;border-radius:var(--radius);overflow:hidden;min-width:0}
+    .panel-head{height:62px;display:flex;align-items:center;justify-content:space-between;gap:12px;padding:0 22px;border-bottom:1px solid #2a2e36}
+    .panel-kicker{color:#818895;font:10px ui-monospace,Consolas,monospace;letter-spacing:.12em;text-transform:uppercase}
+    .panel-title{font-size:14px;letter-spacing:-.018em;font-weight:650;margin-top:5px}
+    .state{white-space:nowrap;display:inline-flex;align-items:center;gap:8px;border:1px solid #38413a;border-radius:999px;color:var(--ok);font:10px ui-monospace,Consolas,monospace;letter-spacing:.055em;padding:7px 10px;background:#1b272014}
+    .state i{width:6px;height:6px;border-radius:50%;background:currentColor;box-shadow:0 0 10px currentColor}
+    .state[data-s="off"],.state[data-s="done"]{color:#858d9a;border-color:#39404a}
+    .state[data-s="puff"],.state[data-s="lighting"]{color:#ffad6f;border-color:#77513c;background:#2c1e15}
+    .state[data-s="dying"]{color:#e4b97d;border-color:#64543a}
+    .stage{height:400px;position:relative;overflow:hidden;background:radial-gradient(ellipse at 50% 67%,#20252b 0%,#13171c 42%,#0c1015 82%)}
+    .stage:before{content:"";position:absolute;inset:0;background-image:linear-gradient(#d7ddf805 1px,transparent 1px),linear-gradient(90deg,#d7ddf805 1px,transparent 1px);background-size:34px 34px;mask-image:linear-gradient(to bottom,transparent,black 30%,black 80%,transparent)}
+    #scene{display:block;width:100%;height:100%;position:absolute;inset:0}
+    .stage-top{position:absolute;top:22px;left:23px;z-index:2;pointer-events:none}
+    .stage-top .overline{font:10px ui-monospace,Consolas,monospace;letter-spacing:.1em;color:#7d8693}
+    .stage-top .mainline{margin-top:8px;font:11px ui-monospace,Consolas,monospace;color:#bdc6ce}
+    .wind-hint{position:absolute;top:24px;right:24px;font:10px ui-monospace,Consolas,monospace;letter-spacing:.03em;color:#788493;text-align:right;z-index:2}
+    .wind-hint strong{color:#a4aebb}
+    .stage-bottom{position:absolute;bottom:14px;left:0;right:0;display:flex;justify-content:space-between;gap:8px;padding:0 23px;color:#667381;font:10px ui-monospace,Consolas,monospace;pointer-events:none}
+    .stage-footer{display:grid;grid-template-columns:repeat(3,1fr);gap:0;border-top:1px solid #2c3139}
+    .mini{padding:15px 18px;border-right:1px solid #2c3139}.mini:last-child{border-right:0}
+    .mini-label{font:9px ui-monospace,Consolas,monospace;letter-spacing:.08em;text-transform:uppercase;color:#808794}
+    .mini-val{font:600 16px ui-monospace,Consolas,monospace;margin-top:8px;color:#d0d6dc}
+    .mini-val b{font-size:10px;color:#6f7885;font-weight:400}
+    .controls{padding:22px 22px 20px}
+    .button-row{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px}
+    .action{height:47px;border:1px solid #40454e;background:#252a31;color:#eaedf1;border-radius:10px;font-weight:650;font-size:13px;display:flex;align-items:center;justify-content:center;gap:9px}
+    .action:hover:not(:disabled){background:#30363f;border-color:#69737e}
+    .action.primary{background:#f69b63;color:#241b15;border-color:#f7b186;box-shadow:0 4px 32px #ff8b4815}
+    .action.primary:hover:not(:disabled){background:#ffb27d}
+    .action svg,.reset svg{width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+    .reset{width:100%;height:38px;border-radius:9px;background:transparent;color:#aab0bb;border:1px solid #373c44;display:flex;align-items:center;justify-content:center;gap:9px;font-size:11px}
+    .reset:hover{background:#232830;color:#eef2f6}
+    .section-label{display:flex;justify-content:space-between;color:#b9c0ca;align-items:center;margin:28px 0 22px;font:600 10px ui-monospace,Consolas,monospace;letter-spacing:.14em;text-transform:uppercase}
+    .section-label:after{content:"";height:1px;background:#343943;flex:1;margin-left:14px}
+    .control{margin:0 0 24px}
+    .control:last-child{margin-bottom:0}
+    .control-header{display:flex;justify-content:space-between;align-items:center;gap:12px;font-size:12px;margin-bottom:13px;color:#aeb6c2}
+    .control-header output{font:600 12px ui-monospace,Consolas,monospace;color:#e7e8e9;font-variant-numeric:tabular-nums}
+    .control input[type="range"]{width:100%;margin:0;height:5px;appearance:none;-webkit-appearance:none;border-radius:100px;background:linear-gradient(to right,#e98c55 0%,#e98c55 var(--fill),#383e48 var(--fill),#383e48 100%);outline:none;cursor:pointer;display:block}
+    input[type="range"]::-webkit-slider-thumb{-webkit-appearance:none;width:16px;height:16px;border-radius:50%;border:3px solid #fca16d;background:#25211f;box-shadow:0 0 0 2px #1a1a1f}
+    input[type="range"]::-moz-range-thumb{width:12px;height:12px;border-radius:50%;border:3px solid #fca16d;background:#25211f;box-shadow:0 0 0 2px #1a1a1f}
+    .ticks{display:flex;justify-content:space-between;color:#69717e;font:10px ui-monospace,Consolas,monospace;margin-top:12px}
+    .helper{color:#6e7581;font-size:10px;line-height:1.65;margin-top:10px}
+    .divider{height:1px;background:#2e333b;margin:22px 0}
+    .transport{display:flex;justify-content:space-between;align-items:center;gap:10px}
+    .transport-left{display:flex;align-items:center;gap:8px;color:#828a96;font:10px ui-monospace,Consolas,monospace}
+    .speed{display:flex;gap:3px;background:#0e1116;border:1px solid #353943;border-radius:8px;padding:3px}
+    .speed button{border:0;background:transparent;color:#8c94a2;border-radius:5px;font:11px ui-monospace,Consolas,monospace;padding:7px 9px}
+    .speed button.selected{color:#faf8f5;background:#323945}
+    .pause{border:1px solid #393e49;background:#20242b;color:#c2c9d2;border-radius:8px;font-size:11px;padding:9px 11px}
+    .pause:hover{background:#2d333d}
+    .lower-grid{display:grid;grid-template-columns:minmax(0,1.85fr) minmax(326px,.89fr);gap:14px;margin-top:14px}
+    .chart-wrap{position:relative;height:215px;padding:16px 17px 10px}
+    #chart{width:100%;height:100%;display:block}
+    .chart-legend{display:flex;gap:20px;color:#9b9eaa;font:10px ui-monospace,Consolas,monospace}
+    .legend-dot{width:7px;height:7px;border-radius:100%;display:inline-block;background:#ff985b;margin-right:6px}
+    .balance{padding:20px 22px}
+    .balance-item{display:flex;justify-content:space-between;gap:10px;align-items:center;margin:0 0 13px;font-size:11px;color:#9da5b0}
+    .balance-item strong{color:#d6dbe0;font:12px ui-monospace,Consolas,monospace;font-weight:600;font-variant-numeric:tabular-nums}
+    .balance-item:last-child{margin:0}
+    .meter{height:3px;background:#303741;border-radius:3px;overflow:hidden;margin-top:-7px;margin-bottom:15px}
+    .meter span{height:100%;background:linear-gradient(to right,#aa4e37,#f59c60);display:block;width:0;transition:width .15s}
+    .log-panel{padding:18px 22px 21px;border-top:1px solid #2b3038}
+    .log-title{font:10px ui-monospace,Consolas,monospace;letter-spacing:.09em;color:#838b99;margin-bottom:13px}
+    .log-entry{display:flex;gap:13px;color:#a3aab4;font:11px ui-monospace,Consolas,monospace;padding:5px 0;line-height:1.4}
+    .log-time{color:#596573;flex:none}.log-msg{min-width:0}
+    details.science{margin-top:15px;border:1px solid #2a2f37;background:#111419;border-radius:14px;overflow:hidden}
+    details.science summary{padding:19px 23px;display:flex;justify-content:space-between;align-items:center;gap:16px;cursor:pointer;list-style:none;font-weight:600;font-size:13px}
+    details.science summary::-webkit-details-marker{display:none}
+    .summary-side{color:#9199a7;font:10px ui-monospace,Consolas,monospace;font-weight:400}
+    .science-content{padding:0 23px 25px;color:#9aa3ae;font-size:12px;line-height:1.82;max-width:1100px}
+    .science-content p{margin:14px 0}
+    .equations{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin:16px 0}
+    .equation{border:1px solid #303740;background:#191e25;padding:13px;border-radius:9px;min-width:0}
+    .equation span{color:#d2dbe4;display:block;margin-bottom:5px;font-size:11px;font-weight:600}
+    .equation code{font:11px ui-monospace,Consolas,monospace;color:#fdac78;display:block;white-space:normal;overflow-wrap:anywhere}
+    .caveat{border-left:2px solid #d77f57;padding:10px 15px;background:#2b201a66;color:#c4adb0;margin-top:12px}
+    .foot{display:flex;justify-content:space-between;gap:18px;margin-top:22px;color:#626b76;font:10px ui-monospace,Consolas,monospace}
+    @media(max-width:1050px){.shell{padding:22px 21px 40px}.main-grid,.lower-grid{grid-template-columns:minmax(0,1fr) 335px}.stage{height:360px}}
+    @media(max-width:850px){.main-grid,.lower-grid{grid-template-columns:1fr}.metrics{grid-template-columns:repeat(2,minmax(0,1fr))}.hero-meta{display:none}.stage{height:370px}.controls{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:0 30px}.controls .control-buttons,.controls .section-label,.controls .divider,.controls .transport{grid-column:1/-1}.controls .section-label{margin-top:25px}.controls .control{margin-bottom:28px}}
+    @media(max-width:530px){.shell{padding:15px 12px 30px}.nav{padding-bottom:17px}.nav-right .model-name{display:none}.hero{padding:27px 3px 23px}.hero h1{font-size:37px}.description{font-size:12px}.metrics{gap:8px}.metric{padding:14px 13px}.metric-value{font-size:27px}.metric-top{font-size:9px}.main-grid,.lower-grid{gap:10px}.panel-head{padding:0 15px}.stage{height:310px}.stage-top{top:15px;left:14px}.wind-hint{top:16px;right:13px}.stage-bottom{padding:0 12px;font-size:9px}.mini{padding:13px 9px}.mini-val{font-size:14px}.mini-label{font-size:8px}.controls{display:block;padding:20px 17px}.button-row{gap:8px}.action{font-size:12px}.control{margin-bottom:25px}.equations{grid-template-columns:1fr}.science-content{padding:0 16px 19px}details.science summary{padding:16px}.foot{flex-direction:column;gap:6px}}
+    @media(prefers-reduced-motion:reduce){button{transition:none}}
+  </style>
+</head>
+<body>
+  <main class="shell">
+    <header class="nav">
+      <div class="brand"><div class="mark" aria-hidden="true">✳</div><div><div class="brand-name">EMBER / LAB</div><div class="brand-sub">COMBUSTION DYNAMICS / 001</div></div></div>
+      <div class="nav-right"><span class="model-name">МОДЕЛЬ: HEAT · FLOW · OXIDATION</span><span><i class="live-dot"></i>ЛОКАЛЬНАЯ СИМУЛЯЦИЯ</span></div>
+    </header>
+    <section class="hero">
+      <div><div class="eyebrow">ИНТЕРАКТИВНЫЙ ФИЗИЧЕСКИЙ ЭКСПЕРИМЕНТ</div><h1>Физика тления<span style="color:#f49863">.</span></h1><p class="description">Подожгите сигарету, сделайте затяжку или оставьте её тлеть. Меняйте температуру, влажность и ветер и наблюдайте, как тепловой баланс управляет горением.</p></div>
+      <div class="hero-meta">РАЗМЕР <strong>Ø 8 × 58 мм</strong><br>РЕЖИМ <strong>ТЕРМОХИМИЧЕСКАЯ МОДЕЛЬ</strong><br>ИНТЕГРИРОВАНИЕ <strong>Δt ≤ 0,05 с</strong></div>
+    </section>
+    <section class="metrics" aria-label="Главные показатели">
+      <div class="metric"><div class="metric-top"><span>Температура очага</span><span>°C</span></div><div class="metric-value color-hot" id="vTemp">22<em>°C</em></div><div class="metric-bottom" id="tempCaption">Температура окружающей среды</div></div>
+      <div class="metric"><div class="metric-top"><span>Сгорело табака</span><span>мм</span></div><div class="metric-value" id="vLength">0.0<em>мм</em></div><div class="metric-bottom" id="lengthCaption">Осталось 58,0 мм</div></div>
+      <div class="metric"><div class="metric-top"><span>Скорость горения</span><span>мм/мин</span></div><div class="metric-value" id="vRate">0.0<em>мм/мин</em></div><div class="metric-bottom" id="rateCaption">Без реактивного окисления</div></div>
+      <div class="metric"><div class="metric-top"><span>Время опыта</span><span>MM:SS</span></div><div class="metric-value" id="vTime">00:00</div><div class="metric-bottom" id="timeCaption">1× от реального времени</div></div>
+    </section>
+    <div class="main-grid">
+      <section class="panel" aria-label="Визуализация">
+        <div class="panel-head"><div><div class="panel-kicker">01 / КАМЕРА НАБЛЮДЕНИЯ</div><div class="panel-title">Фронт горения</div></div><div class="state" id="statusBadge" data-s="off"><i></i><span id="statusText">НЕ ПОДОЖЖЕНА</span></div></div>
+        <div class="stage" id="stage">
+          <canvas id="scene" aria-label="Анимированная сигарета с тлеющим кончиком, пеплом и дымом"></canvas>
+          <div class="stage-top"><div class="overline">СИМУЛЯЦИЯ / ВИД СБОКУ</div><div class="mainline" id="airLine">T∞ 22°C · RH 50%</div></div>
+          <div class="wind-hint"><span id="windArrow">→</span> ПОТОК ВОЗДУХА<br><strong id="windLine">0,0 м/с</strong></div>
+          <div class="stage-bottom"><span>0 мм / СВОБОДНЫЙ КОНЕЦ</span><span>58 мм / ГРАНИЦА ФИЛЬТРА</span></div>
+        </div>
+        <div class="stage-footer">
+          <div class="mini"><div class="mini-label">Масса табака</div><div class="mini-val" id="miniMass">598 <b>мг</b></div></div>
+          <div class="mini"><div class="mini-label">Влажность табака</div><div class="mini-val" id="miniMoist">9,4 <b>%</b></div></div>
+          <div class="mini"><div class="mini-label">Объём затяжки</div><div class="mini-val" id="miniFlow">0 <b>мл/с</b></div></div>
+        </div>
+      </section>
+      <section class="panel" aria-label="Органы управления">
+        <div class="panel-head"><div><div class="panel-kicker">02 / ПАРАМЕТРЫ</div><div class="panel-title">Управление экспериментом</div></div><span style="font:10px ui-monospace,Consolas,monospace;color:#727b89">LIVE</span></div>
+        <div class="controls">
+          <div class="control-buttons">
+            <div class="button-row">
+              <button class="action primary" id="igniteBtn" type="button"><svg viewBox="0 0 24 24"><path d="M12 22c5 0 8-3.4 8-8 0-3.2-2.1-6.5-5.3-9.5.3 2.7-.8 4.1-2 5.1C11.4 7.1 11.3 4.3 10.3 2 7 5.6 4 9.6 4 14a8 8 0 0 0 8 8Z"/><path d="M12 22c2.4 0 4-1.8 4-4 0-1.9-1.2-3.6-3-5.1.2 1.7-.6 2.5-1.4 3.1-.5-1.1-.6-2.5-1.1-3.6C9 14.2 8 16.2 8 18a4 4 0 0 0 4 4Z"/></svg><span id="igniteLabel">Прикурить</span></button>
+              <button class="action" id="puffBtn" type="button" disabled><svg viewBox="0 0 24 24"><path d="M3 10h10m-10 4h14M3 18h7M16 6c2.7 0 5 2 5 4.5s-2.3 4.5-5 4.5"/><path d="m13 7 3 3-3 3"/></svg><span id="puffLabel">Затяжка</span></button>
+            </div>
+            <button class="reset" id="resetBtn" type="button"><svg viewBox="0 0 24 24"><path d="M3 12a9 9 0 1 0 3-6.7M3 4v6h6"/></svg>Новая сигарета / сброс опыта</button>
+          </div>
+          <div class="section-label">Атмосфера</div>
+          <div class="control"><label class="control-header" for="tempSlider"><span>Температура воздуха</span><output id="tempOut">22 °C</output></label><input id="tempSlider" type="range" min="-20" max="50" step="1" value="22"><div class="ticks"><span>−20 °C</span><span>+50 °C</span></div></div>
+          <div class="control"><label class="control-header" for="rhSlider"><span>Относительная влажность</span><output id="rhOut">50 %</output></label><input id="rhSlider" type="range" min="0" max="100" step="1" value="50"><div class="ticks"><span>0 %</span><span>100 %</span></div></div>
+          <div class="control"><label class="control-header" for="windSlider"><span>Скорость ветра</span><output id="windOut">0,0 м/с</output></label><input id="windSlider" type="range" min="0" max="15" step="0.1" value="0"><div class="ticks"><span>Штиль</span><span>15 м/с</span></div><div class="helper">Сильный ветер увеличивает приток O₂, но также отводит тепло — тление может прекратиться.</div></div>
+          <div class="section-label">Затяжка</div>
+          <div class="control"><label class="control-header" for="volumeSlider"><span>Объём</span><output id="volumeOut">35 мл</output></label><input id="volumeSlider" type="range" min="15" max="70" step="5" value="35"><div class="ticks"><span>15 мл</span><span>70 мл</span></div></div>
+          <div class="control"><label class="control-header" for="durationSlider"><span>Продолжительность</span><output id="durationOut">2,0 с</output></label><input id="durationSlider" type="range" min="1" max="4" step="0.5" value="2"><div class="ticks"><span>1 с</span><span>4 с</span></div><div class="helper">Исходные 35 мл за 2 с соответствуют стандартному машинному режиму ISO 3308.</div></div>
+          <div class="divider"></div>
+          <div class="transport"><div class="transport-left"><span>СКОРОСТЬ</span><div class="speed" aria-label="Скорость симуляции"><button type="button" data-speed="1" class="selected">1×</button><button type="button" data-speed="5">5×</button><button type="button" data-speed="20">20×</button></div></div><button id="pauseBtn" class="pause" type="button">Ⅱ Пауза</button></div>
+        </div>
+      </section>
+    </div>
+    <div class="lower-grid">
+      <section class="panel"><div class="panel-head"><div><div class="panel-kicker">03 / ТЕЛЕМЕТРИЯ</div><div class="panel-title">Температура во времени</div></div><div class="chart-legend"><span><i class="legend-dot"></i>Очаг °C</span></div></div><div class="chart-wrap"><canvas id="chart" aria-label="График температуры очага за последние две минуты"></canvas></div></section>
+      <section class="panel"><div class="panel-head"><div><div class="panel-kicker">04 / ЭНЕРГЕТИКА</div><div class="panel-title">Тепловой баланс</div></div><span style="font:10px ui-monospace,Consolas,monospace;color:#747d8a">Вт</span></div><div class="balance">
+        <div class="balance-item"><span>Выделение при окислении</span><strong id="bChem">0,00 Вт</strong></div><div class="meter"><span id="mChem"></span></div>
+        <div class="balance-item"><span>Нагрев от зажигалки</span><strong id="bIgn">0,00 Вт</strong></div>
+        <div class="balance-item"><span>Конвективный теплоотвод</span><strong id="bConv">0,00 Вт</strong></div>
+        <div class="balance-item"><span>Тепловое излучение</span><strong id="bRad">0,00 Вт</strong></div>
+        <div class="balance-item"><span>Испарение и другие потери</span><strong id="bOther">0,00 Вт</strong></div>
+        <div class="divider" style="margin:15px 0"></div>
+        <div class="balance-item"><span>Разность (нагрев − потери)</span><strong id="bNet">0,00 Вт</strong></div>
+        <div class="balance-item"><span>Коэффициент теплоотдачи h</span><strong id="bH">0,0 Вт/(м²·К)</strong></div>
+        <div class="balance-item"><span>Мольная доля O₂ в воздухе</span><strong id="bOxy">20,9 %</strong></div>
+      </div><div class="log-panel"><div class="log-title">ЖУРНАЛ СОБЫТИЙ</div><div id="eventLog" aria-live="polite"></div></div></section>
+    </div>
+    <details class="science">
+      <summary><span>Как устроена физическая модель</span><span class="summary-side">ФОРМУЛЫ, ДОПУЩЕНИЯ И ИСТОЧНИКИ ＋</span></summary>
+      <div class="science-content">
+        <p>Симуляция использует сосредоточенную модель горячей зоны (одну эффективную температуру). Тепловыделение ограничено одновременно химической скоростью реакции и доступностью кислорода. При затяжке применяется синусоидальный профиль расхода воздуха; после прекращения тяги усиленная реакция затухает. Передвижение фронта определяется массой сгоревшего табака, а не заранее заданным таймером.</p>
+        <div class="equations">
+          <div class="equation"><span>Первый закон термодинамики</span><code>C · dT/dt = ṁ · H + Pзаж − Qконв − Qизл − Qосев − Qисп − Qтяга</code></div>
+          <div class="equation"><span>Кинетика окисления (Аррениус)</span><code>ṁкин = ṁ₀ · exp[−Ea/R · (1/T − 1/T₀)] · f(влаги)</code></div>
+          <div class="equation"><span>Тепловое излучение (Стефан — Больцман)</span><code>Qизл = εσA · (T⁴ − T∞⁴), температуры в K</code></div>
+          <div class="equation"><span>Конвективный теплоотвод</span><code>Qконв = hA · (T − T∞); h = Nu · kвозд / D</code></div>
+          <div class="equation"><span>Обтекание цилиндра (Черчилль — Бернштейн)</span><code>Nu = 0,3 + [0,62 Re½ Pr⅓ / (1+(0,4/Pr)⅔)¼] · [1+(Re/282000)⅝]⅘</code></div>
+          <div class="equation"><span>Ограничение кислородом</span><code>ṁ = min(ṁкин, ṁO₂); ṁO₂ = f(ветер, поток затяжки, xO₂)</code></div>
+          <div class="equation"><span>Испарение влаги</span><code>Qисп ≈ Lᵥ · ṁ · w / (1−w); Lᵥ = 2,26 МДж/кг</code></div>
+          <div class="equation"><span>Продвижение зоны тления</span><code>dx/dt = ṁ / λ; λ = 10,3 мг/мм</code></div>
+        </div>
+        <p><strong>Параметры:</strong> горючая длина 58 мм, диаметр 8 мм, масса табака 598 мг; эффективная теплоёмкость горячей области 0,095 Дж/К; теплота реакции 14 МДж/кг; эффективная площадь теплоотдачи 0,00017 м²; излучательная способность 0,78; энергия активации 45 кДж/моль. Начальная влажность табака задаётся относительной влажностью при создании новой сигареты; при изменении атмосферы влажность табака медленно стремится к новому равновесию (характерное время 30 мин).</p>
+        <p>Температура очага — эффективная температура твёрдой фазы, а не показание поверхности бумаги. Реальная сигарета имеет пространственный температурный профиль, различные кинетические стадии пиролиза, диффузию через бумагу, собственную пористость и динамику золы. Коэффициенты переноса кислорода, эффективная теплоёмкость, кондуктивные потери и визуализация дыма здесь <strong>приближённые</strong>, не полученные индивидуальной калибровкой конкретной марки. Поэтому это исследовательская демонстрация физики, <strong>не точный предсказатель</strong> скорости тления или пожарной безопасности.</p>
+        <div class="caveat">Важно: оставленная без присмотра сигарета — реальный источник пожара. Погасание в модели не доказывает, что сигарета погаснет при тех же условиях в действительности.</div>
+        <p><strong>Источники и проверочные диапазоны:</strong> <a href="https://www.nature.com/articles/247405a0" target="_blank" rel="noopener noreferrer">R. R. Baker, Nature (1974), температурный профиль</a>; <a href="https://link.springer.com/article/10.1186/s40038-016-0011-4" target="_blank" rel="noopener noreferrer">обзор механизма тления, 2–5 мм/мин</a>; <a href="https://www.ncbi.nlm.nih.gov/books/NBK222356/" target="_blank" rel="noopener noreferrer">National Academies, физика горения</a>; <a href="https://ht.readthedocs.io/en/latest/ht.conv_external.html" target="_blank" rel="noopener noreferrer">формула Черчилля — Бернштейна</a>; <a href="https://standards.iteh.ai/catalog/standards/iso/f73ddc05-6e9c-4630-9d21-598f3e4aed0d/iso-3308-2012" target="_blank" rel="noopener noreferrer">ISO 3308, затяжка 35 мл / 2 с</a>.</p>
+      </div>
+    </details>
+    <footer class="foot"><span>EMBER / LAB · НАУЧНО-ОБРАЗОВАТЕЛЬНАЯ ВИЗУАЛИЗАЦИЯ</span><span>РАСЧЁТЫ И ВИЗУАЛИЗАЦИЯ РАБОТАЮТ ЛОКАЛЬНО · БЕЗ ИНТЕРНЕТА</span></footer>
+  </main>
+  <script>
+  'use strict';
+  (() => {
+    const $ = id => document.getElementById(id);
+    const clamp = (x,a,b)=>Math.max(a,Math.min(b,x));
+    const fmt=(v,d=1)=>Number.isFinite(v)?v.toFixed(d).replace('.',','):'—';
+    const C = {R:8.314462618,SIGMA:5.670374419e-8,DIAMETER:.008,HEAT:14,EA:45000,TREF:950,AXIAL:.0018,EPS:.78,
+      MASS_PER_MM:10.3,LENGTH:58,AREA:.00017,CP:.095,PR:.71};
+    const ctl={air:22,rh:50,wind:0,volume:35,duration:2};
+    let s,particles=[],ashes=[],history=[],events=[],lastFrame=0,renderStamp=0,chartStamp=0,simSpeed=1,paused=false,acc=0;
+    const scene=$('scene'),chart=$('chart'),ctx=scene.getContext('2d'),cc=chart.getContext('2d');
+    let CW=800,CH=400,SW=800,SH=200,DPR=1;
+    const rand=(a,b)=>a+Math.random()*(b-a);
+    const ashNoise=Array.from({length:140},()=>({x:Math.random(),y:Math.random(),radius:rand(.4,1.4),a:rand(.17,.7)}));
+    const paperNoise=Array.from({length:260},()=>({x:Math.random(),y:Math.random(),s:rand(.3,1.9),a:rand(.07,.23)}));
+    const smokeSprite=document.createElement('canvas');smokeSprite.width=smokeSprite.height=64;
+    const smokeCtx=smokeSprite.getContext('2d');
+    const smokeGrad=smokeCtx.createRadialGradient(32,32,0,32,32,32);
+    smokeGrad.addColorStop(0,'rgba(210,219,230,.36)');smokeGrad.addColorStop(.45,'rgba(174,187,200,.21)');smokeGrad.addColorStop(1,'rgba(158,170,185,0)');
+    smokeCtx.fillStyle=smokeGrad;smokeCtx.fillRect(0,0,64,64);
+    const initialMoisture=()=>.035+.18*Math.pow(ctl.rh/100,1.6);
+    function pushEvent(label){events.unshift({t:s.time,label});events=events.slice(0,4);drawEvents();}
+    function drawEvents(){ $('eventLog').innerHTML=''; for(const e of events){const li=document.createElement('div');li.className='log-entry';const tm=document.createElement('span'),txt=document.createElement('span');tm.className='log-time';txt.className='log-msg';const min=Math.floor(e.t/60),sec=Math.floor(e.t%60);tm.textContent=String(min).padStart(2,'0')+':'+String(sec).padStart(2,'0');txt.textContent=e.label;li.append(tm,txt);$('eventLog').append(li);}}
+    function reset(){
+      s={T:ctl.air+273.15,burn:0,moist:initialMoisture(),time:0,light:0,puff:0,puffDuration:2,puffVolume:35,
+        puffCount:0,ash:0,heat:false,complete:false,rate:0,flow:0,qChem:0,qIgn:0,qConv:0,qRad:0,qOther:0,qNet:0,h:0,o2:.2095,
+        visualT:ctl.air+273.15,smokeAcc:0,lastStatus:'off'};
+      particles=[];ashes=[];history=[];events=[];
+      pushEvent('Новая сигарета готова'); sampleChart();updateUI(true);
+    }
+    function ignite(){if(s.complete)return; if(s.light>0)return;
+      s.light=2.8;s.heat=true;paused=false;$('pauseBtn').textContent='Ⅱ Пауза';pushEvent(s.T>600?'Повторный прогрев очага':'Инициировано прикуривание');
+      updateUI(true);
+    }
+    function puff(){if(s.complete || s.puff>0 || s.light>0 || s.T<650 || s.rate<.13)return;
+      s.puffDuration=ctl.duration;s.puffVolume=ctl.volume;s.puff=ctl.duration;s.puffCount++;
+      pushEvent('Затяжка №'+s.puffCount+' · '+fmt(ctl.volume,0)+' мл / '+fmt(ctl.duration,1)+' с');updateUI(true);
+    }
+    function physics(dt){
+      const Ta=ctl.air+273.15,delta=Math.max(0,s.T-Ta),film=(s.T+Ta)/2;
+      const equil=initialMoisture();s.moist+=(equil-s.moist)*(1-Math.exp(-dt/1800));
+      const pSat=610.94*Math.exp(17.625*ctl.air/(ctl.air+243.04));
+      const pV=ctl.rh/100*pSat;
+      s.o2=.2095*(1-clamp(pV/101325,0,.2));
+      const airflow=ctl.wind,kinematic=1.5e-5*Math.pow(film/300,1.75),k=.026*Math.pow(film/300,.85);
+      const Re=airflow*C.DIAMETER/kinematic;
+      // Churchill—Bernstein: средний Nu для цилиндра в поперечном потоке
+      const Nu=.3+(.62*Math.sqrt(Re)*Math.pow(C.PR,1/3)/Math.pow(1+Math.pow(.4/C.PR,2/3),.25))*Math.pow(1+Math.pow(Re/282000,5/8),.8);
+      const hForced=airflow>0?Nu*k/C.DIAMETER:0;
+      const hNatural=15*Math.pow(Math.max(delta,1)/630,.25);
+      s.h=Math.hypot(hForced,hNatural);
+      if(s.puff>0){
+        const u=clamp((s.puffDuration-s.puff)/s.puffDuration,0,1);
+        s.flow=s.puffVolume/s.puffDuration*Math.PI/2*Math.sin(Math.PI*u);
+        s.puff=Math.max(0,s.puff-dt);
+      }else{s.flow=0;}
+      const kinetic=1.3*Math.exp(-C.EA/C.R*(1/Math.max(200,s.T)-1/C.TREF))*Math.exp(-2*(s.moist-.1));
+      const oxygenCap=(.74*(1+.12*Math.sqrt(airflow))+1*(s.flow/17.5))*s.o2/.2095;
+      s.rate=(s.T>500 && s.burn<C.LENGTH)?clamp(Math.min(kinetic,oxygenCap),0,5):0;
+      s.qIgn=s.light>0?33:0;
+      if(s.light>0)s.light=Math.max(0,s.light-dt);
+      s.qChem=s.rate*C.HEAT;
+      s.qConv=s.h*C.AREA*(s.T-Ta);
+      s.qRad=C.EPS*C.SIGMA*C.AREA*(Math.pow(s.T,4)-Math.pow(Ta,4));
+      const qAxial=C.AXIAL*(s.T-Ta);
+      const qEvap=s.rate*(s.moist/(1-s.moist))*2.26; // мг/с × Дж/мг
+      const qPuff=s.flow*1e-6*1.2*1005*delta*.23;
+      s.qOther=qAxial+qEvap+qPuff;
+      s.qNet=s.qChem+s.qIgn-s.qConv-s.qRad-s.qOther;
+      s.T=Math.max(Ta,Math.min(1650,s.T+s.qNet*dt/C.CP));
+      const oldBurn=s.burn;
+      s.burn=Math.min(C.LENGTH,s.burn+s.rate*dt/C.MASS_PER_MM);
+      if(s.burn>oldBurn){s.ash+=s.burn-oldBurn;if(s.ash>rand(5.5,7.7)){
+        const front=geometry().front;
+        for(let i=0;i<7;i++)ashes.push({x:front-rand(10,35),y:geometry().mid+rand(-4,5),vx:rand(-14,19),vy:rand(-15,3),size:rand(1.2,3.5),life:rand(.5,1.8)});
+        s.ash=rand(1.4,2.6);}}
+      s.time+=dt;
+      if(s.burn>=C.LENGTH&&!s.complete){s.complete=true;s.puff=0;s.flow=0;s.rate=0;s.qChem=0;s.light=0;pushEvent('Табак полностью выгорел');}
+      const status=getStatus();
+      if(s.lastStatus!==status){
+        if(status==='smolder' && s.lastStatus==='lighting')pushEvent('Стабильное тление');
+        if(status==='off' && s.lastStatus!=='off')pushEvent('Очаг погас — требуется прикурить');
+        if(status==='dying'&&s.lastStatus==='smolder')pushEvent('Очаг остывает · тление нестабильно');
+        s.lastStatus=status;
+      }
+      s.smokeAcc+=((s.rate>.05?s.rate*16:0)+(s.flow>0?s.flow*.06:0))*dt;
+      const geo=geometry();
+      while(s.smokeAcc>=1){s.smokeAcc--;spawnSmoke(geo.front,geo.mid);}
+      if(s.smokeAcc>5)s.smokeAcc=5;
+      for(const p of particles){p.age+=dt;p.x+=p.vx*dt+(ctl.wind*14*Math.sqrt(Math.max(0,p.age)))*dt;p.y+=p.vy*dt;p.x+=Math.sin(p.age*2.3+p.phase)*12*dt;p.size+=dt*p.growth;}
+      particles=particles.filter(p=>p.age<p.life).slice(-350);
+      for(const a of ashes){a.life-=dt;a.vy+=55*dt;a.x+=a.vx*dt;a.y+=a.vy*dt;}
+      ashes=ashes.filter(a=>a.life>0);
+    }
+    function getStatus(){
+      if(s.complete)return 'done';
+      if(s.light>0)return 'lighting';
+      if(s.puff>0)return 'puff';
+      if(s.T<525)return 'off';
+      if(s.rate>.18 && s.qChem>3.5 && s.T>725)return 'smolder';
+      return 'dying';
+    }
+    function spawnSmoke(front,mid){if(particles.length>=350)return;
+      particles.push({x:front-rand(2,12),y:mid-rand(0,8),vx:rand(-14,13),vy:rand(-44,-19),age:0,life:rand(3.6,7.8),size:rand(13,22),growth:rand(2.4,5.6),phase:rand(0,7)});
+    }
+    function sampleChart(){history.push({t:s.time,T:s.T-273.15});const low=s.time-120;while(history.length>3&&history[0].t<low)history.shift();if(history.length>650)history.shift();}
+    function setupCanvas(){
+      DPR=Math.min(2,window.devicePixelRatio||1);
+      const rect=scene.getBoundingClientRect(),crt=chart.getBoundingClientRect();
+      CW=Math.max(1,rect.width);CH=Math.max(1,rect.height);SW=Math.max(1,crt.width);SH=Math.max(1,crt.height);
+      scene.width=Math.round(CW*DPR);scene.height=Math.round(CH*DPR);ctx.setTransform(DPR,0,0,DPR,0,0);
+      chart.width=Math.round(SW*DPR);chart.height=Math.round(SH*DPR);cc.setTransform(DPR,0,0,DPR,0,0);
+      render();renderChart();
+    }
+    function geometry(){const left=CW*.105,right=CW*.90,filter=CW*.195;
+      const coalEnd=right-filter,scale=(coalEnd-left)/C.LENGTH;
+      return{left,right,filter,coalEnd,scale,front:left+s.burn*scale,mid:CH*.58,r:clamp(CH*.031,9,13)};
+    }
+    function ellipsoid(x,y,rx,ry,color,glow){ctx.save();ctx.shadowColor=color;ctx.shadowBlur=glow;ctx.fillStyle=color;ctx.beginPath();ctx.ellipse(x,y,Math.max(.5,rx),Math.max(.5,ry),0,0,2*Math.PI);ctx.fill();ctx.restore();}
+    function roundedRect(x,y,w,h,r){if(w<=0)return;ctx.beginPath();ctx.roundRect(x,y,w,h,Math.min(r,Math.abs(w)/2,h/2));}
+    function render(){
+      ctx.clearRect(0,0,CW,CH);
+      const g=geometry(),{left,right,coalEnd,front,mid,r,scale}=g;
+      const W=right-front,lit=s.T>600&&!s.complete;
+      // дым рисуется позади стержня
+      for(const p of particles){const alpha=Math.sin(Math.PI*clamp(p.age/p.life,0,1))*.64;
+        ctx.globalAlpha=alpha;const sz=p.size;ctx.drawImage(smokeSprite,p.x-sz,p.y-sz,2*sz,2*sz);}
+      ctx.globalAlpha=1;
+      // шкала продвижения под сигаретой
+      ctx.strokeStyle='#39414b';ctx.lineWidth=1;
+      ctx.beginPath();ctx.moveTo(left,mid+r+36);ctx.lineTo(coalEnd,mid+r+36);ctx.stroke();
+      for(let mm=0;mm<=C.LENGTH;mm+=10){const x=left+mm*scale;
+        ctx.strokeStyle='#4b505a';ctx.beginPath();ctx.moveTo(x,mid+r+33);ctx.lineTo(x,mid+r+39);ctx.stroke();
+        ctx.fillStyle='#6b7380';ctx.textAlign='center';ctx.font='10px ui-monospace,Consolas,monospace';ctx.fillText(mm+'',x,mid+r+52);
+      }
+      // цилиндр табака / бумаги
+      if(W>1){
+        const pg=ctx.createLinearGradient(0,mid-r,0,mid+r);
+        pg.addColorStop(0,'#b7b5ac');pg.addColorStop(.13,'#e1e1da');pg.addColorStop(.35,'#fbf9ee');pg.addColorStop(.62,'#edece6');pg.addColorStop(.9,'#c8c6bb');pg.addColorStop(1,'#8c8d86');
+        ctx.save();ctx.shadowBlur=15;ctx.shadowColor='#03050780';roundedRect(front,mid-r,Math.max(0,W),r*2,1);ctx.fillStyle=pg;ctx.fill();ctx.restore();
+        ctx.save();ctx.beginPath();ctx.rect(front,mid-r,W,r*2);ctx.clip();
+        for(const n of paperNoise){const x=front+n.x*Math.max(W,1);
+          ctx.strokeStyle='rgba(84,80,73,'+n.a+')';ctx.lineWidth=.6;ctx.beginPath();ctx.moveTo(x,mid-r+n.y*r*2);ctx.lineTo(x+n.s,mid-r+n.y*r*2);ctx.stroke();}
+        ctx.restore();
+      }
+      // фильтр
+      {const fg=ctx.createLinearGradient(0,mid-r,0,mid+r);
+        fg.addColorStop(0,'#9c7652');fg.addColorStop(.13,'#c7a77d');fg.addColorStop(.37,'#e2c49c');fg.addColorStop(.68,'#d3b18b');fg.addColorStop(1,'#8c6749');
+        roundedRect(coalEnd,mid-r,right-coalEnd,r*2,1);ctx.fillStyle=fg;ctx.fill();
+        ctx.save();ctx.beginPath();ctx.rect(coalEnd,mid-r,right-coalEnd,r*2);ctx.clip();
+        for(let i=0;i<130;i++){const x=coalEnd+((i*97)%137)/137*(right-coalEnd),y=mid-r+((i*53)%113)/113*2*r;
+          ctx.fillStyle=i%5===0?'#856d5160':'#e8c89e30';ctx.fillRect(x,y,.7,.8);}
+        ctx.restore();
+        ctx.fillStyle='#8f745c';ctx.fillRect(coalEnd+2,mid-r,2,r*2);
+        ctx.fillStyle='#725a43';ctx.fillRect(right-2,mid-r,2,r*2);
+        ctx.strokeStyle='#f0d9b280';ctx.lineWidth=1;ctx.beginPath();ctx.moveTo(coalEnd+7,mid-r+2);ctx.lineTo(coalEnd+7,mid+r-2);ctx.stroke();
+      }
+      // зола на левом горящем участке
+      if(s.burn>0.015){
+        const ashW=Math.max(1,s.ash*scale),from=front-ashW;
+        const ag=ctx.createLinearGradient(0,mid-r,0,mid+r);ag.addColorStop(0,'#5a5d60');ag.addColorStop(.14,'#a7aba9');ag.addColorStop(.36,'#e1e1d9');ag.addColorStop(.67,'#a3a5a3');ag.addColorStop(.96,'#616666');ag.addColorStop(1,'#3d4345');
+        roundedRect(from,mid-r,ashW+2,2*r,2);ctx.fillStyle=ag;ctx.fill();
+        ctx.save();ctx.beginPath();ctx.rect(from,mid-r,ashW+2,r*2);ctx.clip();
+        for(const n of ashNoise){const x=from+n.x*ashW,y=mid-r+n.y*r*2;
+          ctx.fillStyle=n.y<.5?'rgba(47,51,53,'+n.a+')':'rgba(228,226,211,'+(n.a*.4)+')';
+          ctx.fillRect(x,y,n.radius,n.radius*.85);
+        }
+        ctx.strokeStyle='#555a5baa';ctx.lineWidth=.8;for(let i=0;i<8;i++){const ax=from+(i+.2)*ashW/8;ctx.beginPath();ctx.moveTo(ax,mid-r+rand(1,3));ctx.lineTo(ax+rand(-2,4),mid+rand(-4,5));ctx.stroke();}
+        ctx.restore();
+      }
+      // раскалённый фронт
+      if(lit){
+        const norm=clamp((s.T-500)/620,0,1),glow=12+30*norm;
+        const halo=ctx.createRadialGradient(front,mid,1,front,mid,glow*2);
+        halo.addColorStop(0,'rgba(246,104,37,'+(.17+norm*.20)+')');halo.addColorStop(.35,'rgba(227,70,26,'+(norm*.08)+')');halo.addColorStop(1,'rgba(222,60,15,0)');
+        ctx.fillStyle=halo;ctx.beginPath();ctx.ellipse(front,mid,glow*2,glow*1.4,0,0,Math.PI*2);ctx.fill();
+        const cg=ctx.createLinearGradient(front-8,0,front+7,0);
+        cg.addColorStop(0,'#461c18');cg.addColorStop(.42,norm>.4?'#df572c':'#9e3a26');cg.addColorStop(.76,'#ffae64');cg.addColorStop(1,'#815b4a');
+        ctx.fillStyle=cg;ctx.fillRect(front-5,mid-r+1,6,2*r-2);
+        ctx.strokeStyle='#f68a50';ctx.lineWidth=1;
+        ctx.beginPath();ctx.ellipse(front-3,mid,3,r*.92,0,0,2*Math.PI);ctx.fillStyle='#e46d35';ctx.fill();
+        for(let i=0;i<16;i++){
+          const yy=mid+Math.sin(i*13.9)*r*.87,xx=front-4+Math.sin(i*9.1)*3;
+          const strength=.28+norm*.6;const flicker=.65+.35*Math.sin(s.time*10+i*17.3);
+          ellipsoid(xx,yy,rand(.45,1.25),rand(.35,.75),'rgba(255,'+Math.round(118+100*norm)+',65,'+(strength*flicker)+')',3+5*norm);
+        }
+        // теплосвечения фронта под бумагой
+        const hotGradient=ctx.createLinearGradient(front,0,front+26,0);
+        hotGradient.addColorStop(0,'rgba(254,97,39,'+(norm*.61)+')');
+        hotGradient.addColorStop(1,'rgba(254,97,39,0)');
+        ctx.fillStyle=hotGradient;ctx.fillRect(front,mid-r,Math.min(26,W),2*r);
+      }else if(s.burn===0){
+        ctx.fillStyle='#8c7763';ctx.beginPath();ctx.ellipse(left,mid,2,r-.4,0,0,Math.PI*2);ctx.fill();
+        for(let i=0;i<14;i++){ctx.fillStyle=i%2?'#645641':'#c7ab86';ctx.fillRect(left-.4,mid-r+((i*13)%21)/21*r*2,1.8,1.7);}
+      }
+      // незаметный нагрев при остывании, зола после погасания
+      if(!lit && s.burn>0 && !s.complete && s.T>430){
+        ctx.fillStyle='rgba(134,46,27,'+clamp((s.T-430)/300,0,.55)+')';
+        ctx.beginPath();ctx.ellipse(front-2,mid,4,r*.87,0,0,Math.PI*2);ctx.fill();
+      }
+      // направление ветра
+      if(ctl.wind>.1){ctx.strokeStyle='rgba(161,175,190,.30)';ctx.lineWidth=1;
+        const count=Math.min(10,2+Math.floor(ctl.wind));
+        for(let i=0;i<count;i++){
+          const x=((s.time*ctl.wind*11+i*97)%(CW+130))-60,y=CH*.25+(i%4)*17;
+          ctx.beginPath();ctx.moveTo(x,y);ctx.lineTo(x+17+ctl.wind*1.6,y);ctx.lineTo(x+12+ctl.wind*1.6,y-3);ctx.moveTo(x+17+ctl.wind*1.6,y);ctx.lineTo(x+12+ctl.wind*1.6,y+3);ctx.stroke();
+        }
+      }
+      for(const a of ashes){ctx.fillStyle='rgba(167,169,160,'+clamp(a.life,0,1)+')';ctx.beginPath();ctx.arc(a.x,a.y,a.size,0,2*Math.PI);ctx.fill();}
+      // затяжка показана градиентом в трубке, без мультяшного выдоха из фильтра
+      if(s.flow>1){const width=Math.min(150,W+right-coalEnd),x=right-width;
+        const f=ctx.createLinearGradient(x,0,right,0);
+        f.addColorStop(0,'rgba(255,167,91,0)');f.addColorStop(1,'rgba(255,191,120,'+clamp(s.flow/160,0,.21)+')');
+        ctx.fillStyle=f;ctx.fillRect(x,mid-r*.26,width,r*.52);
+      }
+      if(s.complete){ctx.fillStyle='#c8b99b';ctx.font='11px ui-monospace,Consolas,monospace';ctx.textAlign='center';ctx.fillText('ФИЛЬТР · ГОРЕНИЕ ЗАВЕРШЕНО',(coalEnd+right)/2,mid-r-20);}
+    }
+    function renderChart(){const c=cc,w=SW,h=SH;c.clearRect(0,0,w,h);
+      const pad={l:42,r:18,t:12,b:29},iw=w-pad.l-pad.r,ih=h-pad.t-pad.b;
+      const ymin=Math.min(-20,ctl.air-30),ymax=1100;
+      c.font='10px ui-monospace,Consolas,monospace';c.textAlign='right';
+      for(const v of [0,250,500,750,1000]){const y=pad.t+(ymax-v)/(ymax-ymin)*ih;
+        c.strokeStyle='#333943';c.lineWidth=1;c.setLineDash([3,5]);c.beginPath();c.moveTo(pad.l,y);c.lineTo(w-pad.r,y);c.stroke();c.setLineDash([]);c.fillStyle='#6f7887';c.fillText(v+'°',pad.l-9,y+3);}
+      const start=Math.max(0,s.time-120),span=120;
+      c.textAlign='center';for(let i=0;i<=4;i++){const x=pad.l+i*iw/4;c.fillStyle='#6f7887';c.fillText('-'+(120-i*30)+'с',x,h-7);}
+      if(history.length<2)return;
+      const pts=history.map(p=>[pad.l+(p.t-start)/span*iw,pad.t+(ymax-clamp(p.T,ymin,ymax))/(ymax-ymin)*ih]);
+      c.save();c.beginPath();c.rect(pad.l,pad.t,iw,ih);c.clip();
+      const g=c.createLinearGradient(0,pad.t,0,pad.t+ih);g.addColorStop(0,'rgba(247,141,80,.22)');g.addColorStop(1,'rgba(247,141,80,0)');
+      c.beginPath();c.moveTo(pts[0][0],pad.t+ih);for(const p of pts)c.lineTo(p[0],p[1]);c.lineTo(pts[pts.length-1][0],pad.t+ih);c.closePath();c.fillStyle=g;c.fill();
+      c.beginPath();for(let i=0;i<pts.length;i++){const [x,y]=pts[i];if(i===0)c.moveTo(x,y);else c.lineTo(x,y);}
+      c.strokeStyle='#ff995e';c.lineWidth=2;c.stroke();const [px,py]=pts[pts.length-1];c.beginPath();c.arc(px,py,3,0,2*Math.PI);c.fillStyle='#ffad75';c.fill();c.restore();
+    }
+    function updateUI(force=false){
+      const st=getStatus(),labels={off:'НЕ ГОРИТ',lighting:'ПРИКУРИВАНИЕ',puff:'ЗАТЯЖКА',smolder:'СВОБОДНОЕ ТЛЕНИЕ',dying:'ОЧАГ ОСТЫВАЕТ',done:'ВЫГОРЕЛА'};
+      $('statusBadge').dataset.s=st;$('statusText').textContent=(s.time===0&&st==='off')?'НЕ ПОДОЖЖЕНА':labels[st];
+      $('vTemp').innerHTML=fmt(s.T-273.15,0)+'<em>°C</em>';
+      $('tempCaption').textContent=s.T>600?'Температура твёрдой фазы':'Состояние зоны тления';
+      $('vLength').innerHTML=fmt(s.burn,1)+'<em>мм</em>';
+      $('lengthCaption').textContent='Осталось '+fmt(C.LENGTH-s.burn,1)+' мм';
+      const mmMin=s.rate/C.MASS_PER_MM*60;
+      $('vRate').innerHTML=fmt(mmMin,1)+'<em>мм/мин</em>';
+      $('rateCaption').textContent=s.rate>.02?fmt(s.rate,2)+' мг табака / с':'Без значимого горения';
+      const min=Math.floor(s.time/60),sec=Math.floor(s.time%60);
+      $('vTime').textContent=String(min).padStart(2,'0')+':'+String(sec).padStart(2,'0');
+      $('timeCaption').textContent=simSpeed+'× от реального времени';
+      $('miniMass').innerHTML=fmt(Math.max(0,C.LENGTH-s.burn)*C.MASS_PER_MM,0)+' <b>мг</b>';
+      $('miniMoist').innerHTML=fmt(s.moist*100,1)+' <b>%</b>';
+      $('miniFlow').innerHTML=fmt(s.flow,1)+' <b>мл/с</b>';
+      $('airLine').textContent='T∞ '+fmt(ctl.air,0)+'°C · RH '+fmt(ctl.rh,0)+'%';
+      $('windLine').textContent=fmt(ctl.wind,1)+' м/с';
+      $('windArrow').textContent=ctl.wind<.1?'·':'→';
+      const burning=s.T>650 && s.rate>.13;
+      $('puffBtn').disabled=!burning || s.puff>0 || s.light>0 || s.complete;
+      $('igniteBtn').disabled=s.complete||s.light>0;
+      $('igniteLabel').textContent=s.light>0?'Прикуриваем…':burning?'Подогреть':'Прикурить';
+      $('puffLabel').textContent=s.puff>0?'Затяжка…':'Затяжка';
+      const out=(id,v,d=2)=>$(id).textContent=fmt(v,d)+' Вт';
+      out('bChem',s.qChem);out('bIgn',s.qIgn);out('bConv',s.qConv);out('bRad',s.qRad);out('bOther',s.qOther);out('bNet',s.qNet);
+      $('bNet').style.color=s.qNet>1?'#f6a273':s.qNet< -1?'#89aec8':'#d6dbe0';
+      $('mChem').style.width=(clamp(s.qChem/34,0,1)*100)+'%';
+      $('bH').textContent=fmt(s.h,1)+' Вт/(м²·К)';
+      $('bOxy').textContent=fmt(s.o2*100,2)+' %';
+    }
+    // Controls
+    const controls=[
+      ['tempSlider','tempOut','air',v=>fmt(v,0)+' °C'],
+      ['rhSlider','rhOut','rh',v=>fmt(v,0)+' %'],
+      ['windSlider','windOut','wind',v=>fmt(v,1)+' м/с'],
+      ['volumeSlider','volumeOut','volume',v=>fmt(v,0)+' мл'],
+      ['durationSlider','durationOut','duration',v=>fmt(v,1)+' с']
+    ];
+    for(const [id,out,key,format] of controls){const el=$(id);
+      const update=()=>{const value=Number(el.value);ctl[key]=value;$(out).textContent=format(value);el.style.setProperty('--fill',((value-Number(el.min))/(Number(el.max)-Number(el.min))*100)+'%');if(s)updateUI(true);};
+      el.addEventListener('input',update);update();
+    }
+    $('igniteBtn').addEventListener('click',ignite);$('puffBtn').addEventListener('click',puff);$('resetBtn').addEventListener('click',reset);
+    $('pauseBtn').addEventListener('click',()=>{paused=!paused;$('pauseBtn').textContent=paused?'▶ Продолжить':'Ⅱ Пауза';});
+    for(const b of document.querySelectorAll('[data-speed]'))b.addEventListener('click',()=>{simSpeed=Number(b.dataset.speed);for(const x of document.querySelectorAll('[data-speed]'))x.classList.toggle('selected',x===b);updateUI(true);});
+    document.addEventListener('keydown',e=>{if(e.code==='Space' && !(e.target instanceof HTMLInputElement) && !(e.target instanceof HTMLButtonElement) && !(e.target instanceof HTMLTextAreaElement)){e.preventDefault();puff();}});
+    function tick(ts){
+      const elapsed=lastFrame===0?0:clamp((ts-lastFrame)/1000,0,.16);lastFrame=ts;
+      if(!paused){acc+=elapsed*simSpeed;let n=0;while(acc>=.05&&n<85){physics(.05);acc-=.05;n++;
+        if(s.complete){acc=0;break;}}
+        if(n===85)acc=Math.min(acc,.15);
+      }
+      if(ts-renderStamp>45){render();updateUI();renderStamp=ts;}
+      if(ts-chartStamp>210){sampleChart();renderChart();chartStamp=ts;}
+      requestAnimationFrame(tick);
+    }
+    window.addEventListener('resize',setupCanvas,{passive:true});
+    reset();setupCanvas();requestAnimationFrame(tick);
+  })();
+  </script>
+</body>
+</html>
